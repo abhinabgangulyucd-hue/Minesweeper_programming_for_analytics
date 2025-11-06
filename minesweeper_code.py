@@ -8,7 +8,7 @@ EASY = {'rows': 9, 'cols': 9, 'mines': 10}
 INTERMEDIATE = {'rows': 16, 'cols': 16, 'mines': 40}
 EXPERT = {'rows': 16, 'cols': 30, 'mines': 99}
 SCORE_FILE = 'highscores.txt'
-BOARD_FILE = 'grid_matrix.txt'
+BOARD_FILE = 'grid_matrix.txt' #board answer
 
 class Board:
     """The game board mainly of 3 elements of the mines, mine count, flags and the reveal count"""
@@ -47,7 +47,7 @@ class Board:
     def calculate_numbers(self):  # to count number of mines next to a cell
         for row in range(self.rows):
             for col in range(self.cols):
-                if not self.mine_grid[row][col]:
+                if not self.mine_grid[row][col]: #if cell isn't mine, search for adjacent mine
                     count = 0
                     #below dynamic allows us to check for left,right,top,bottom and diagonal mines since all are at a max distance of 1
                     for dr in [-1, 0, 1]:
@@ -56,23 +56,25 @@ class Board:
                             if not (dr == 0 and dc == 0): #doesnt count the cell in reference (0,0 coordinate)
                                 r = row + dr
                                 c = col + dc
-                                # Check if they are not the first or lsat elements before checking neighbours
+                                # Check if they are not the first or last elements before checking neighbours
                                 if (r >= 0) and (r < self.rows) and (c >= 0) and (c < self.cols):
-                                    if self.mine_grid[r][c]:
-                                        count += 1
+                                    if self.mine_grid[r][c]: #if cell at row r column c has mine, increase the number in the cell at row row and column col by 1
+                                        count += 1                   
+                       
                     self.number_grid[row][col] = count
+                else:
+                    count = 'M'
+                    self.number_grid[row][col] = count #add the count to mine as 'M'
         self.reveal_board()
     #by this point, board has been created. execute code to export board to txt file
 
     def reveal_board(self):
         with open(BOARD_FILE, 'w') as file:
             for row in range(self.rows):
-                for col in range(self.cols):
-                    revealed_grid = self.number_grid[row][col]                
-                    file.write(str(revealed_grid))             
-                #file = open(BOARD_FILE, 'w')
-                #file.close()
-                #file = open(BOARD_FILE, 'a')                    
+                row_cells = []
+                for col in range(self.cols):                    
+                    row_cells.append(str(self.number_grid[row][col]))                    
+                file.write(' '.join(row_cells) + '\n') #export board answer to txt file                                
                 
 
     #keeping below reveal_cell function commented if problems are identified with the flooding logic
@@ -149,8 +151,6 @@ def make_empty_grid(total_rows, total_cols, default_value):
         for c in range(total_cols):
             row_list.append(default_value)
         grid_matrix.append(row_list)
-    #file = open(BOARD_FILE, 'w')
-    #file.write(str(grid_matrix))
     return grid_matrix
 
 def save_score(name, time_taken, difficulty):
