@@ -8,6 +8,7 @@ EASY = {'rows': 9, 'cols': 9, 'mines': 10}
 INTERMEDIATE = {'rows': 16, 'cols': 16, 'mines': 40}
 EXPERT = {'rows': 16, 'cols': 30, 'mines': 99}
 SCORE_FILE = 'highscores.txt'
+BOARD_FILE = 'grid_matrix.txt'
 
 class Board:
     """The game board mainly of 3 elements of the mines, mine count, flags and the reveal count"""
@@ -60,6 +61,16 @@ class Board:
                                     if self.mine_grid[r][c]:
                                         count += 1
                     self.number_grid[row][col] = count
+        self.reveal_board()
+    #by this point, board has been created. execute code to export board to txt file
+
+    def reveal_board(self):
+        for row in range(self.rows):
+            for col in range(self.cols):
+                revealed_cell = self.number_grid[row][col]
+                file = open(BOARD_FILE, 'a')
+                file.write(str(revealed_cell))
+                
 
     #keeping below reveal_cell function commented if problems are identified with the flooding logic
     '''def reveal_cell(self, row, col):  #to reveal a cell/block
@@ -135,6 +146,8 @@ def make_empty_grid(total_rows, total_cols, default_value):
         for c in range(total_cols):
             row_list.append(default_value)
         grid_matrix.append(row_list)
+    #file = open(BOARD_FILE, 'w')
+    #file.write(str(grid_matrix))
     return grid_matrix
 
 def save_score(name, time_taken, difficulty):
