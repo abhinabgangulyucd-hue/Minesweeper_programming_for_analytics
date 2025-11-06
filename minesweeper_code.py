@@ -65,11 +65,14 @@ class Board:
     #by this point, board has been created. execute code to export board to txt file
 
     def reveal_board(self):
-        for row in range(self.rows):
-            for col in range(self.cols):
-                revealed_cell = self.number_grid[row][col]
-                file = open(BOARD_FILE, 'a')
-                file.write(str(revealed_cell))
+        with open(BOARD_FILE, 'w') as file:
+            for row in range(self.rows):
+                for col in range(self.cols):
+                    revealed_grid = self.number_grid[row][col]                
+                    file.write(str(revealed_grid))             
+                #file = open(BOARD_FILE, 'w')
+                #file.close()
+                #file = open(BOARD_FILE, 'a')                    
                 
 
     #keeping below reveal_cell function commented if problems are identified with the flooding logic
