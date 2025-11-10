@@ -8,6 +8,8 @@ EASY = {'rows': 9, 'cols': 9, 'mines': 10}
 INTERMEDIATE = {'rows': 16, 'cols': 16, 'mines': 40}
 EXPERT = {'rows': 16, 'cols': 30, 'mines': 99}
 SCORE_FILE = 'highscores.txt'
+BOARD_FILE = 'grid_matrix.txt' #board answer
+#N_BOARD_FILE = 'grid_matrix_n.txt' #n board answers
 
 class Board:
     """The game board mainly of 3 elements of the mines, mine count, flags and the reveal count"""
@@ -39,14 +41,15 @@ class Board:
             if flag_proceed_mine:  #check above conditions and if flag is 1 (above conditionsa re not true), place mine
                 self.mine_grid[row][col] = True
                 placed += 1
-
+        with open(BOARD_FILE, 'w') as file:
+            file.write('') #write the txt file with nothing
         self.calculate_numbers()  
 
 
     def calculate_numbers(self):  # to count number of mines next to a cell
         for row in range(self.rows):
             for col in range(self.cols):
-                if not self.mine_grid[row][col]:
+                if not self.mine_grid[row][col]: #if cell isn't mine, search for adjacent mine
                     count = 0
                     #below dynamic allows us to check for left,right,top,bottom and diagonal mines since all are at a max distance of 1
                     for dr in [-1, 0, 1]:
@@ -55,11 +58,30 @@ class Board:
                             if not (dr == 0 and dc == 0): #doesnt count the cell in reference (0,0 coordinate)
                                 r = row + dr
                                 c = col + dc
-                                # Check if they are not the first or lsat elements before checking neighbours
+                                # Check if they are not the first or last elements before checking neighbours
                                 if (r >= 0) and (r < self.rows) and (c >= 0) and (c < self.cols):
-                                    if self.mine_grid[r][c]:
-                                        count += 1
+                                    if self.mine_grid[r][c]: #if cell at row r column c has mine, increase the number in the cell at row row and column col by 1
+                                        count += 1                   
+                       
                     self.number_grid[row][col] = count
+                else:
+                    count = 'M'
+                    self.number_grid[row][col] = count #add the count to mine as 'M'
+        
+        self.reveal_board()        
+    #by this point, board has been created. execute code to export board(s) to txt file
+
+    def reveal_board(self):        
+        with open(BOARD_FILE, 'a') as file: #use 'a' type because of the analytics part
+            file.write('Output:\n')
+            for row in range(self.rows):
+                row_cells = []
+                for col in range(self.cols):                    
+                    row_cells.append(str(self.number_grid[row][col]))                                    
+                file.write(' '.join(row_cells) + '\n') #export board answer to txt file
+                              
+
+                
 
     #keeping below reveal_cell function commented if problems are identified with the flooding logic
     '''def reveal_cell(self, row, col):  #to reveal a cell/block
@@ -386,6 +408,35 @@ class Game:
 
         back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
         back_button.pack(pady=10)
+
+        
+        n_board_analysis_ask = simpledialog.askinteger('N-board analysis','Enter the number of generated boards')
+        if n_board_analysis_ask is None:
+            return
+        n_board_analysis_rows = simpledialog.askinteger('N-board analysis','Enter rows (5-30)')
+        if n_board_analysis_rows is None:
+            return
+        n_board_analysis_columns = simpledialog.askinteger('N-board analysis','Enter columns (5-30)')
+        if n_board_analysis_columns is None:
+            return
+        max_mines = (n_board_analysis_rows * n_board_analysis_columns) - 1
+        n_board_analysis_mines = simpledialog.askinteger("Custom Board", f"Enter mines (1-{max_mines}):", minvalue=1, maxvalue=max_mines)
+        if n_board_analysis_mines is None:
+            return               
+        
+
+        with open(BOARD_FILE, 'w') as file:
+            for n in range(n_board_analysis_ask):
+                n_board = Board(n_board_analysis_rows, n_board_analysis_columns, n_board_analysis_mines)
+                placed = 0                                
+                while placed < n_board_analysis_mines:
+                    r = random.randint(0, n_board_analysis_rows - 1)
+                    c = random.randint(0, n_board_analysis_columns - 1)
+                    if not n_board.mine_grid[r][c]:
+                        n_board.mine_grid[r][c] = True
+                        placed += 1 #do the add mines part again, but without the safe first click, and n times
+                n_board.calculate_numbers() #export n boards to txt file
+
 
 window = tk.Tk()
 game = Game(window)
