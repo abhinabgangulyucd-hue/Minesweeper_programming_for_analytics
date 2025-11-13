@@ -56,8 +56,7 @@ class Board:
                     count = 0
                     # below dynamic allows us to check for left, right, top, bottom and diagonal mines since all are at a max distance of 1
                     for dr in [-1, 0, 1]:
-                        for dc in [-1, 0, 1]:
-                            
+                        for dc in [-1, 0, 1]:                            
                             if not (dr == 0 and dc == 0): #doesn't count the cell in reference (0,0 coordinate)
                                 r = row + dr
                                 c = col + dc
