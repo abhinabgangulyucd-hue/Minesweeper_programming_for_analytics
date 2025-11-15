@@ -570,14 +570,16 @@ class CustomConfigDialog(tk.Toplevel):
         rows = int(rows_str)
         cols = int(cols_str)
         mines = int(mines_str)
-        self.game.n_board_analysis_rows = rows
-        self.game.n_board_analysis_columns = cols
-        self.game.n_board_analysis_mines = mines #for the analytics part
+        
         error = validate_custom_config(rows, cols, mines)
         if error:
             messagebox.showerror("Invalid Configuration", error)
             return
 
+        self.game.n_board_analysis_rows = rows
+        self.game.n_board_analysis_columns = cols
+        self.game.n_board_analysis_mines = mines #for the analytics part
+        
         self.result = {'rows': rows, 'cols': cols, 'mines': mines}
         self.destroy()
 
