@@ -499,25 +499,30 @@ class Game:
                 n_board.calculate_numbers() #export n boards to txt file via the calculate_numbers() function
         
         messagebox.showinfo("Success!", "Your boards have been exported.")
-def validate_custom_config(rows, cols, mines): #doesn't work
-    """Validate custom board configuration (with hard cap and warning)."""
+"""def validate_custom_config(rows, cols, mines): #doesn't work
+    
     if type(rows)!=int or type(cols)!=int or type(mines)!=int :
         print(type(rows))
         print(type(cols))
         print(type(mines))
 
         return "All fields must be integers."
-    if rows < 1 or cols < 1 or mines < 1:
+    if rows < 1 or cols < 1 or mines < 1:"""
+def validate_custom_config(rows, cols, mines):
+    """Validate custom board configuration (with hard cap and warning)."""
+    if (rows < 1) or (cols < 1) or (mines < 1):
         return "Rows, columns, and mines must be at least 1."
-    if rows > 98 or cols > 100:
+    if (rows > 98) and (cols > 100):
         return "Rows and columns must be at most 98 x 100."
     total = rows * cols
     if total < 3:
         return "Board must have at least 3 cells."
+    
     if mines > total - 2:
         return f"Too many mines! Maximum: {total - 2} (need at least 2 safe cells)."
     return None
 
+#Abhinab Update(15th November 2025): added comments to customconfigdialog
 class CustomConfigDialog(tk.Toplevel):
     """
     Dialog for custom Minesweeper board configuration.
@@ -525,30 +530,27 @@ class CustomConfigDialog(tk.Toplevel):
     """
     def __init__(self, parent):
         super().__init__(parent)
-        self.title("Custom Board")
+        self.title("Custom Board") 
         self.resizable(False, False)
-        self.transient(parent)
-        self.grab_set()
+        self.transient(parent) #makes the dialogbox always appear above the parent window
+        self.grab_set() #makes behind layers inaccesible untill this one is either closed or entered
         self.result = None
-
-        # --- Layout ---
         frame = tk.Frame(self, padx=15, pady=15)
         frame.pack()
 
-        # Info label for warnings/hard limit
+
         warning_text = (
             "Max: 9800 cells. "
             "Warning: Selecting over 3600 cells may cause display or performance issues."
         )
         tk.Label(
-            frame, text=warning_text, font=("Arial", 9), fg="red", wraplength=300
+            frame, text=warning_text, font=("Arial", 9), fg="red"
         ).grid(row=0, column=0, columnspan=2, pady=8, sticky="w")
 
-        # Input fields: Rows, Columns, Mines
-        self.rows_var = tk.IntVar(value=9)
-        self.cols_var = tk.IntVar(value=9)
-        self.mines_var = tk.IntVar(value=10)
-
+        #Abhinab Update (15th November 2025): Converted IntVar to StringVar to avoid implicit conversion to Integer and enable usage of isdigit() function
+        self.rows_var = tk.StringVar(value="9") #default value to be displayed
+        self.cols_var = tk.StringVar(value="9")
+        self.mines_var = tk.StringVar(value="10")
         tk.Label(frame, text="Rows:").grid(row=1, column=0, sticky="e", pady=8)
         tk.Entry(frame, textvariable=self.rows_var, width=10).grid(row=1, column=1, pady=8)
         tk.Label(frame, text="Columns:").grid(row=2, column=0, sticky="e", pady=8)
@@ -566,46 +568,25 @@ class CustomConfigDialog(tk.Toplevel):
         self.bind("<Return>", lambda e: self.on_ok())
         self.bind("<Escape>", lambda e: self.on_cancel())
 
-        # Center dialog on parent window
-        self.update_idletasks()
         x = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
-
+    ##Abhinab Update (15th November 2025): Fixed logic of checking decimal values
     def on_ok(self):
-        # Fetch inputs
-        try:
-            rows = self.rows_var.get()
-            cols = self.cols_var.get()
-            mines = self.mines_var.get()
-        except Exception:
-            messagebox.showerror("Error", "Please enter valid numbers.")
-            return
-
-        total_cells = rows * cols
-
-        # dont allow more than 9800 cells
-        if total_cells > 8000:
-            messagebox.showerror(
-                "Board Too Large",
-                f"Maximum allowed is 9800 cells. You selected {total_cells}."
-            )
-            return
-
-        # show dialog if more than 3600 cells
-        if total_cells > 3600:
-            proceed = messagebox.askyesno(
-                "Warning: Large Board",
-                (
-                    f"Board size: {total_cells} cells.\n"
-                    "This may break the game and cause display or performance issues.\n\n"
-                    "Do you really want to proceed?"
-                )
-            )
-            if not proceed:
+        rows_str = self.rows_var.get() #to retrieve rows val
+        cols_str = self.cols_var.get() #to retrieve column val
+        mines_str = self.mines_var.get() #to retrieve mines val
+        
+        # Validate that all are integer strings
+        for val, label in ((rows_str, "Rows"), (cols_str, "Columns"), (mines_str, "Mines")):
+            if not (val.isdigit()):
+                messagebox.showerror("Error", f"{label} must be an integer greater than 0 (no decimals or letters).")
                 return
 
-        # Validate all scenarios
+        rows = int(rows_str)
+        cols = int(cols_str)
+        mines = int(mines_str)
+        
         error = validate_custom_config(rows, cols, mines)
         if error:
             messagebox.showerror("Invalid Configuration", error)
@@ -613,6 +594,7 @@ class CustomConfigDialog(tk.Toplevel):
 
         self.result = {'rows': rows, 'cols': cols, 'mines': mines}
         self.destroy()
+
 
     def on_cancel(self):
         self.result = None
