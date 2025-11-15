@@ -1,5 +1,6 @@
 import random
 import time
+import csv
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
@@ -8,6 +9,9 @@ EASY = {'rows': 9, 'cols': 9, 'mines': 10}
 INTERMEDIATE = {'rows': 16, 'cols': 16, 'mines': 40}
 EXPERT = {'rows': 16, 'cols': 30, 'mines': 99}
 SCORE_FILE = 'highscores.txt'
+BOARD_FILE = "grid_matrix.txt"
+BOARD_FILE_CSV = "grid_matrix.csv" #board answer
+#N_BOARD_FILE = 'grid_matrix_n.txt' #n board answers
 
 
 class Board:
@@ -37,18 +41,23 @@ class Board:
             if flag_proceed_mine:  # check above conditions, and if flag is 1 (above conditions are not true), place mine
                 self.mine_grid[row][col] = True
                 placed += 1
-        self.calculate_numbers()
+        with open(BOARD_FILE, "w") as file:
+            file.write('') #write the txt file with nothing, just to clear it then append with boards
+        with open(BOARD_FILE_CSV, "w") as file_csv:
+            writer = csv.writer(file_csv) #write the csv file with nothing, just to clear it then append with boards
+        self.calculate_numbers()  
+
 
     def calculate_numbers(self):
         """count number of mines next to a cell"""
         for row in range(self.rows):
             for col in range(self.cols):
-                if not self.mine_grid[row][col]:
+                if not self.mine_grid[row][col]: #a number cell isn't a mine cell, search for adjacent mines
                     count = 0
                     # below dynamic allows us to check for left, right, top, bottom and diagonal mines since all are at a max distance of 1
                     for dr in [-1, 0, 1]:
-                        for dc in [-1, 0, 1]:
-                            if not (dr == 0 and dc == 0):  # doesn't count the cell in reference (0,0 coordinate)
+                        for dc in [-1, 0, 1]:                            
+                            if not (dr == 0 and dc == 0): #doesn't count the cell in reference (0,0 coordinate)
                                 r = row + dr
                                 c = col + dc
                                 # Check if they are not the first or lsat elements before checking neighbours
@@ -56,7 +65,42 @@ class Board:
                                     if self.mine_grid[r][c]:
                                         count += 1
                     self.number_grid[row][col] = count
+                    #by this point, board has been created. execute code to export board(s) to txt file
+                else:
+                    count = "M"
+                    self.number_grid[row][col] = count #add the count to mine as 'M'
+        
+        self.reveal_board()
 
+    def reveal_board(self):        
+        with open(BOARD_FILE, "a") as file: #use "a" type because of the analytics part
+            file.write("Output:\n")
+            for row in range(self.rows):
+                row_cells = []
+                for col in range(self.cols):                    
+                    row_cells.append(str(self.number_grid[row][col]))                                    
+                file.write(" ".join(row_cells) + '\n') #export board answer to txt file
+        with open(BOARD_FILE_CSV, "a", newline="") as file_csv:
+            writer = csv.writer(file_csv)
+            writer.writerow(["Output:"])  # Optional header row
+            for row in range(self.rows):
+                writer.writerow([self.number_grid[row][col] for col in range(self.cols)])                      
+
+                
+
+    #keeping below reveal_cell function commented if problems are identified with the flooding logic
+    '''def reveal_cell(self, row, col):  #to reveal a cell/block
+        if self.revealed[row][col]:  # dont do anything if its already revealed (return and abort from function)
+            return
+        if self.flagged[row][col]: #dont do anything if it is already flagged (return and abort from function)
+            return
+        self.revealed[row][col] = True  #otherwise set reveal of function to True
+        if self.mine_grid[row][col]: 
+            self.game_over = True   #check if revealed is same column as a mine and if so set game_over flag to True
+            return
+        self.check_win()   #otherwise see if user has won'''
+    
+   
     def reveal_cell(self, row, col):
         """reveals content of the cell if appropriate"""
         # Do nothing if already revealed or flagged
@@ -333,6 +377,7 @@ class Game:
     def show_stats(self):
         """show stats (to be enhanced)"""
         self.clear_screen()
+        '''Depricated
         self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
@@ -356,10 +401,115 @@ class Game:
         stats_label = tk.Label(frame, text=stats_text, font=("Arial", 10), bg="white")
         stats_label.pack(pady=10)
         back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
+        back_button.pack(pady=10)'''
+
+        self.window.geometry("800x800")
+        frame = tk.Frame(self.window, bg="white")
+        frame.pack(padx=20, pady=20)
+
+        title1 = tk.Label(frame, text="ANALYTICS", font=("Arial", 21, "bold"), bg="white")
+        title1.pack(pady=4)
+        title2 = tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"), bg="white")
+        title2.pack(pady=3)
+
+        easy_button = tk.Button(frame, text="Easy (9x9, 10 mines)", width=20, height=2,
+                               command=lambda: self.default_analysis(EASY, "Easy"))
+        easy_button.pack(pady=10)
+
+        inter_button = tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=20, height=2,
+                                command=lambda: self.default_analysis(INTERMEDIATE, "Intermediate"))
+        inter_button.pack(pady=10)
+
+        expert_button = tk.Button(frame, text="Expert (16x30, 99 mines)", width=20, height=2,
+                                 command=lambda: self.default_analysis(EXPERT, "Expert"))
+        expert_button.pack(pady=10)
+
+        # Custom board button
+        custom_button = tk.Button(frame, text="Custom", width=20, height=2, command=self.custom_board_analysis)
+        custom_button.pack(pady=10)
+
+        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
         back_button.pack(pady=10)
+        
+    def default_analysis(self, difficulty, name):
+        self.n_board_analysis_iter = simpledialog.askinteger(f"N-board analysis: {name}", "Enter the number of generated boards")
+        if self.n_board_analysis_iter is None:
+            return
+        else:            
+            self.n_board_analysis_rows = difficulty["rows"]
+            self.n_board_analysis_columns = difficulty["cols"]
+            self.n_board_analysis_mines = difficulty["mines"] #take the values of the keys in the dict
+        self.start_analysis()
 
+    def custom_board_analysis(self): #needs changing to accomodate the new board validity check function
+        self.n_board_analysis_iter = simpledialog.askstring("N-board analysis: Custom", "Enter the number of generated boards") #asks for number of generated boards
+        #print(self.n_board_analysis_iter)
+        if self.n_board_analysis_iter is None:
+            return
+        else:
+            try:
+                int(self.n_board_analysis_iter)
+            except Exception:
+                messagebox.showerror("Error", "Please enter a valid integer.") #if not integer, throw an error
+                return self.custom_board_analysis() #and return to the custom menu (by executing the function again)
+            """elif not isinstance(int(self.n_board_analysis_iter), int):
+                messagebox.showerror("Error", "Please enter valid numbers.")
+                return self.show_stats()"""
+        #else:
+        self.n_board_analysis_iter = int(self.n_board_analysis_iter)
+        if self.n_board_analysis_iter <= 0:
+            messagebox.showerror("Error", "Please enter a positive number.") #if <= 0, throw an error
+            return self.custom_board_analysis() #and return to the custom menu (by executing the function again)
+
+        """Depricated
+        self.n_board_analysis_rows = simpledialog.askinteger("N-board analysis: Custom", "Enter rows")
+        if self.n_board_analysis_rows is None:
+            return
+        self.n_board_analysis_columns = simpledialog.askinteger("N-board analysis: Custom", "Enter columns")
+        if self.n_board_analysis_columns is None:
+            return
+        max_mines = (self.n_board_analysis_rows * self.n_board_analysis_columns) - 1
+        self.n_board_analysis_mines = simpledialog.askinteger("N-board analysis: Custom", f"Enter mines (1-{max_mines}):", minvalue=1, maxvalue=max_mines)
+        if self.n_board_analysis_mines is None:
+            return"""
+        #then asks for the number of rows, columns, and mines
+        dialog = CustomConfigDialog(self.window)
+        self.window.wait_window(dialog)
+        if dialog.result is None:
+            return
+        self.n_board_analysis_rows = tk.IntVar(value=9)
+        self.n_board_analysis_columns = tk.IntVar(value=9)
+        self.n_board_analysis_mines = tk.IntVar(value=10)
+        self.n_board_analysis_rows = self.n_board_analysis_rows.get()
+        self.n_board_analysis_columns = self.n_board_analysis_columns.get()
+        self.n_board_analysis_mines = self.n_board_analysis_mines.get()
+        self.start_analysis()
+
+    def start_analysis(self):
+        with open(BOARD_FILE, "w") as file, open(BOARD_FILE_CSV, "w") as file_csv:
+            for n in range(self.n_board_analysis_iter): #export n_board_analysis_ask number of boards
+                n_board = Board(self.n_board_analysis_rows, self.n_board_analysis_columns, self.n_board_analysis_mines)
+                placed = 0                                
+                while placed < self.n_board_analysis_mines:
+                    r = random.randint(0, self.n_board_analysis_rows - 1)
+                    c = random.randint(0, self.n_board_analysis_columns - 1)
+                    if not n_board.mine_grid[r][c]:
+                        n_board.mine_grid[r][c] = True
+                        placed += 1 #do the add mines part again, but without the safe first click, and n times
+                n_board.calculate_numbers() #export n boards to txt file via the calculate_numbers() function
+        
+        messagebox.showinfo("Success!", "Your boards have been exported.")
+"""def validate_custom_config(rows, cols, mines): #doesn't work
+    
+    if type(rows)!=int or type(cols)!=int or type(mines)!=int :
+        print(type(rows))
+        print(type(cols))
+        print(type(mines))
+
+        return "All fields must be integers."
+    if rows < 1 or cols < 1 or mines < 1:"""
 def validate_custom_config(rows, cols, mines):
-
+    """Validate custom board configuration (with hard cap and warning)."""
     if (rows < 1) or (cols < 1) or (mines < 1):
         return "Rows, columns, and mines must be at least 1."
     if (rows > 98) and (cols > 100):
