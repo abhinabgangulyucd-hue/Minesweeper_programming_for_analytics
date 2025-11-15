@@ -441,10 +441,27 @@ class Game:
             self.n_board_analysis_mines = difficulty["mines"] #take the values of the keys in the dict
         self.start_analysis()
 
-    def custom_board_analysis(self):
-        self.n_board_analysis_iter = simpledialog.askinteger("N-board analysis: Custom", "Enter the number of generated boards")
+    def custom_board_analysis(self): #needs changing to accomodate the new board validity check function
+        self.n_board_analysis_iter = simpledialog.askstring("N-board analysis: Custom", "Enter the number of generated boards") #asks for number of generated boards
+        #print(self.n_board_analysis_iter)
         if self.n_board_analysis_iter is None:
             return
+        else:
+            try:
+                int(self.n_board_analysis_iter)
+            except Exception:
+                messagebox.showerror("Error", "Please enter a valid integer.") #if not integer, throw an error
+                return self.custom_board_analysis() #and return to the custom menu (by executing the function again)
+            """elif not isinstance(int(self.n_board_analysis_iter), int):
+                messagebox.showerror("Error", "Please enter valid numbers.")
+                return self.show_stats()"""
+        #else:
+        self.n_board_analysis_iter = int(self.n_board_analysis_iter)
+        if self.n_board_analysis_iter <= 0:
+            messagebox.showerror("Error", "Please enter a positive number.") #if <= 0, throw an error
+            return self.custom_board_analysis() #and return to the custom menu (by executing the function again)
+
+        """Depricated
         self.n_board_analysis_rows = simpledialog.askinteger("N-board analysis: Custom", "Enter rows")
         if self.n_board_analysis_rows is None:
             return
@@ -454,7 +471,18 @@ class Game:
         max_mines = (self.n_board_analysis_rows * self.n_board_analysis_columns) - 1
         self.n_board_analysis_mines = simpledialog.askinteger("N-board analysis: Custom", f"Enter mines (1-{max_mines}):", minvalue=1, maxvalue=max_mines)
         if self.n_board_analysis_mines is None:
+            return"""
+        #then asks for the number of rows, columns, and mines
+        dialog = CustomConfigDialog(self.window)
+        self.window.wait_window(dialog)
+        if dialog.result is None:
             return
+        self.n_board_analysis_rows = tk.IntVar(value=9)
+        self.n_board_analysis_columns = tk.IntVar(value=9)
+        self.n_board_analysis_mines = tk.IntVar(value=10)
+        self.n_board_analysis_rows = self.n_board_analysis_rows.get()
+        self.n_board_analysis_columns = self.n_board_analysis_columns.get()
+        self.n_board_analysis_mines = self.n_board_analysis_mines.get()
         self.start_analysis()
 
     def start_analysis(self):
@@ -471,9 +499,13 @@ class Game:
                 n_board.calculate_numbers() #export n boards to txt file via the calculate_numbers() function
         
         messagebox.showinfo("Success!", "Your boards have been exported.")
-def validate_custom_config(rows, cols, mines):
+def validate_custom_config(rows, cols, mines): #doesn't work
     """Validate custom board configuration (with hard cap and warning)."""
-    if not all(isinstance(x, int) for x in [rows, cols, mines]):
+    if type(rows)!=int or type(cols)!=int or type(mines)!=int :
+        print(type(rows))
+        print(type(cols))
+        print(type(mines))
+
         return "All fields must be integers."
     if rows < 1 or cols < 1 or mines < 1:
         return "Rows, columns, and mines must be at least 1."
