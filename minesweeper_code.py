@@ -11,7 +11,6 @@ EXPERT = {'rows': 16, 'cols': 30, 'mines': 99}
 SCORE_FILE = 'highscores.txt'
 BOARD_FILE = "grid_matrix.txt"
 BOARD_FILE_CSV = "grid_matrix.csv" #board answer
-#N_BOARD_FILE = 'grid_matrix_n.txt' #n board answers
 
 
 class Board:
@@ -20,7 +19,7 @@ class Board:
         self.rows = rows
         self.cols = cols
         self.mines = mines
-        self.mine_grid = make_empty_grid(rows, cols, False)  # Turned to true if its a mine
+        self.mine_grid = make_empty_grid(rows, cols, False)  # Turned to true if it's a mine
         self.number_grid = make_empty_grid(rows, cols, 0)  # how many mines are around count
         self.revealed = make_empty_grid(rows, cols, False)  # cells revealed to and by a player
         self.flagged = make_empty_grid(rows, cols, False)  # cells flagged by player
@@ -66,7 +65,7 @@ class Board:
                                         count += 1
                     self.number_grid[row][col] = count
                     #by this point, board has been created. execute code to export board(s) to txt file
-                else:
+                else: #a mine cell
                     count = "M"
                     self.number_grid[row][col] = count #add the count to mine as 'M'
         
@@ -151,7 +150,7 @@ class Board:
         self.game_over = True
 
 def make_empty_grid(total_rows, total_cols, default_value):
-    """crmake  a rows x cols grid with same default value"""
+    """make a rows x cols grid with same default value"""
     grid_matrix = []
     for r in range(total_rows):
         row_list = []
@@ -452,10 +451,7 @@ class Game:
             except Exception:
                 messagebox.showerror("Error", "Please enter a valid integer.") #if not integer, throw an error
                 return self.custom_board_analysis() #and return to the custom menu (by executing the function again)
-            """elif not isinstance(int(self.n_board_analysis_iter), int):
-                messagebox.showerror("Error", "Please enter valid numbers.")
-                return self.show_stats()"""
-        #else:
+        
         self.n_board_analysis_iter = int(self.n_board_analysis_iter)
         if self.n_board_analysis_iter <= 0:
             messagebox.showerror("Error", "Please enter a positive number.") #if <= 0, throw an error
@@ -473,16 +469,11 @@ class Game:
         if self.n_board_analysis_mines is None:
             return"""
         #then asks for the number of rows, columns, and mines
-        dialog = CustomConfigDialog(self.window)
+        dialog = CustomConfigDialog(self.window) #facilitates the class CustomConfigDialog
         self.window.wait_window(dialog)
         if dialog.result is None:
             return
-        self.n_board_analysis_rows = tk.IntVar(value=9)
-        self.n_board_analysis_columns = tk.IntVar(value=9)
-        self.n_board_analysis_mines = tk.IntVar(value=10)
-        self.n_board_analysis_rows = self.n_board_analysis_rows.get()
-        self.n_board_analysis_columns = self.n_board_analysis_columns.get()
-        self.n_board_analysis_mines = self.n_board_analysis_mines.get()
+        
         self.start_analysis()
 
     def start_analysis(self):
@@ -496,18 +487,10 @@ class Game:
                     if not n_board.mine_grid[r][c]:
                         n_board.mine_grid[r][c] = True
                         placed += 1 #do the add mines part again, but without the safe first click, and n times
-                n_board.calculate_numbers() #export n boards to txt file via the calculate_numbers() function
+                n_board.calculate_numbers() #export n boards to txt file and csv file via the calculate_numbers() function
         
         messagebox.showinfo("Success!", "Your boards have been exported.")
-"""def validate_custom_config(rows, cols, mines): #doesn't work
-    
-    if type(rows)!=int or type(cols)!=int or type(mines)!=int :
-        print(type(rows))
-        print(type(cols))
-        print(type(mines))
 
-        return "All fields must be integers."
-    if rows < 1 or cols < 1 or mines < 1:"""
 def validate_custom_config(rows, cols, mines):
     """Validate custom board configuration (with hard cap and warning)."""
     if (rows < 1) or (cols < 1) or (mines < 1):
@@ -537,10 +520,11 @@ class CustomConfigDialog(tk.Toplevel):
         self.result = None
         frame = tk.Frame(self, padx=15, pady=15)
         frame.pack()
+        self.game = game #to accept class game arguments
 
 
         warning_text = (
-            "Max: 9800 cells. "
+            "Max: 9800 cells."
             "Warning: Selecting over 3600 cells may cause display or performance issues."
         )
         tk.Label(
@@ -592,6 +576,10 @@ class CustomConfigDialog(tk.Toplevel):
             messagebox.showerror("Invalid Configuration", error)
             return
 
+        self.game.n_board_analysis_rows = rows
+        self.game.n_board_analysis_columns = cols
+        self.game.n_board_analysis_mines = mines #for the analytics part
+        
         self.result = {'rows': rows, 'cols': cols, 'mines': mines}
         self.destroy()
 
