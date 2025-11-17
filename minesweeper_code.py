@@ -12,6 +12,10 @@ SCORE_FILE = 'highscores.txt'
 BOARD_FILE = "grid_matrix.txt"
 BOARD_FILE_CSV = "grid_matrix.csv" #board answer
 
+# adaptive Tile Sizing
+MAX_TILE_SIZE = 32        # normal size
+MIN_TILE_SIZE = 14        # smallest readable tile size
+
 
 class Board:
     """The game board mainly of 3 elements of the mines, mine count, flags and the reveal count"""
@@ -103,9 +107,7 @@ class Board:
     def reveal_cell(self, row, col):
         """reveals content of the cell if appropriate"""
         # Do nothing if already revealed or flagged
-        if self.revealed[row][col]:
-            return
-        if self.flagged[row][col]:
+        if self.revealed[row][col] or self.flagged[row][col]:
             return
         # If this is a mine, reveal it and end the game
         if self.mine_grid[row][col]:
@@ -136,7 +138,7 @@ class Board:
 
     def toggle_flag(self, row, col):
         """cannot toggle a cell to be flagged if already revealed"""
-        if self.revealed[row][col]:
+        if self.revealed[row][col] or self.game_over:
             return
         self.flagged[row][col] = not self.flagged[row][col]  # Reverse a flag toggle
 
@@ -201,11 +203,32 @@ class Game:
     def __init__(self, window):
         self.window = window
         self.window.title("Minesweeper")
+        # Game state
         self.board = None
         self.buttons = []
+        self.clicked_mine = None
+        self.difficulty = ""
         self.game_started = False
         self.start_time = None
-        self.difficulty = ""
+        self.timer_running = False
+
+        # UI references
+        self.timer_label = None
+        self.mines_label = None
+        self.scaled_images = {}
+
+        # Load base images once
+        self.images = {
+            "hidden": tk.PhotoImage(file="Grid.png"),
+            "empty": tk.PhotoImage(file="empty.png"),
+        }
+        for i in range(1, 9):
+            self.images[f"num{i}"] = tk.PhotoImage(file=f"grid{i}.png")
+        self.images["mine"] = tk.PhotoImage(file="mine.png")
+        self.images["mineClicked"] = tk.PhotoImage(file="mineClicked.png")
+        self.images["mineFalse"] = tk.PhotoImage(file="mineFalse.png")
+        self.images["flag"] = tk.PhotoImage(file="flag.png")
+
         self.show_menu()
 
     def clear_screen(self):
@@ -216,41 +239,39 @@ class Game:
     def show_menu(self):
         """#shows all the possible menus (can think of it like an anchor that has all the operations in place)"""
         self.clear_screen()
-        self.window.geometry("600x600")
+        self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
-        title = tk.Label(frame, text="MINESWEEPER", font=("Arial", 20, "bold"), bg="white")
-        title.pack(pady=20)
-        play_button = tk.Button(frame, text="Play Game", width=20, height=2, command=self.show_difficulty)
-        play_button.pack(pady=10)
-        scores_button = tk.Button(frame, text="View Score", width=20, height=2, command=self.show_scores)
-        scores_button.pack(pady=10)
-        stats_button = tk.Button(frame, text="View Statistics", width=20, height=2, command=self.show_stats)
-        stats_button.pack(pady=10)
-        exit_button = tk.Button(frame, text="Exit", width=20, height=2, command=self.window.quit)
-        exit_button.pack(pady=10)
+        frame.pack(expand=True)
+        
+        tk.Label(frame, text="MINESWEEPER", font=("Arial", 20, "bold"), bg="white").pack(pady=20)
+        tk.Button(frame, text="Play Game", width=20, height=2,
+                  command=self.show_difficulty).pack(pady=10)
+        tk.Button(frame, text="View Scores", width=20, height=2,
+                  command=self.show_scores).pack(pady=10)
+        tk.Button(frame, text="View Statistics", width=20, height=2,
+                  command=self.show_stats).pack(pady=10)
+        tk.Button(frame, text="Exit", width=20, height=2,
+                  command=self.window.quit).pack(pady=10)
 
     def show_difficulty(self):
         """#allows user to select difficulty"""
         self.clear_screen()
-        self.window.geometry("800x800")
+        self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
-        title = tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"), bg="white")
-        title.pack(pady=20)
-        easy_button = tk.Button(frame, text="Easy (9x9, 10 mines)", width=20, height=2,
-                               command=lambda: self.start_game(EASY, "Easy"))
-        easy_button.pack(pady=10)
-        inter_button = tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=20, height=2,
-                                command=lambda: self.start_game(INTERMEDIATE, "Intermediate"))
-        inter_button.pack(pady=10)
-        expert_button = tk.Button(frame, text="Expert (16x30, 99 mines)", width=20, height=2,
-                                command=lambda: self.start_game(EXPERT, "Expert"))
-        expert_button.pack(pady=10)
-        custom_button = tk.Button(frame, text="Custom", width=20, height=2, command=self.show_custom)
-        custom_button.pack(pady=10)
-        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
-        back_button.pack(pady=10)
+        frame.pack(expand=True)
+        tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"),
+                 bg="white").pack(pady=20)
+
+        tk.Button(frame, text="Easy (9x9, 10 mines)", width=25, height=2,
+                  command=lambda: self.start_game(EASY, "Easy")).pack(pady=5)
+        tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=25, height=2,
+                  command=lambda: self.start_game(INTERMEDIATE, "Intermediate")).pack(pady=5)
+        tk.Button(frame, text="Expert (16x30, 99 mines)", width=25, height=2,
+                  command=lambda: self.start_game(EXPERT, "Expert")).pack(pady=5)
+        tk.Button(frame, text="Custom", width=25, height=2,
+                  command=self.show_custom).pack(pady=5)
+        tk.Button(frame, text="Back", width=25, height=2,
+                  command=self.show_menu).pack(pady=5)
 
     def show_custom(self):
         """#function for handling custom board scenarios"""
@@ -268,99 +289,277 @@ class Game:
     def start_game(self, difficulty, name):
         """initialize board with given difficulty and start game"""
         self.board = Board(difficulty['rows'], difficulty['cols'], difficulty['mines'])  # Class call for Board with parameters of rows, cols and mines (from difficulty list)
-        self.game_started = False
-        self.start_time = None
         self.difficulty = name
+        self.game_started = False
+        self.timer_running = False
+        self.clicked_mine = None
         self.draw_board()
+
+    def compute_tile_size(self):
+        """Compute dynamic tile size based on board size and screen limits."""
+        cols = self.board.cols
+        rows = self.board.rows
+
+        # Get actual screen size
+        screen_w = self.window.winfo_screenwidth()
+        screen_h = self.window.winfo_screenheight()
+
+        # Limit the usable area (header + footer)
+        usable_h = screen_h - 200
+
+        # Tile sizes that would fit the whole board on screen
+        fit_tile_w = screen_w // cols
+        fit_tile_h = usable_h // rows
+
+        tile_size = min(fit_tile_w, fit_tile_h, MAX_TILE_SIZE)
+
+        # Determine if board actually fits on screen
+        fits_by_width = (cols * tile_size) <= screen_w
+        fits_by_height = (rows * tile_size) <= usable_h
+
+        fits_screen = fits_by_width and fits_by_height
+
+        # If too big → scroll mode with minimum tile size
+        if not fits_screen:
+            return MIN_TILE_SIZE, True
+
+        return max(tile_size, MIN_TILE_SIZE), False
+
 
     def draw_board(self):
         """#to create the visual elements of the Board"""
         self.clear_screen()# Hi! your clear screen friend again to save the day
-        btn_width, font_size = get_button_size(self.board.cols)
-        window_width = self.board.cols * (btn_width * 6 + 2) + 30  # calculation of window_width
-        window_height = self.board.rows * 25 + 120  # calculation of window length
-        self.window.geometry(f"{window_width}x{window_height}")
-        info_text = "Left click: Reveals cell | Right click: To Flag cell"
-        info = tk.Label(self.window, text=info_text, font=("Arial", 10), bg="lightgray")
-        info.pack(pady=5)  # pady is for padding on y axis (length), padx is to pad on x axis (width)
-        board_info = tk.Label(self.window, text=f"Board: {self.board.rows}x{self.board.cols} ({self.board.mines} mines)",
-                             font=("Arial", 10), bg="lightgray")
-        board_info.pack(pady=2)
-        board_frame = tk.Frame(self.window, bg="black")
-        board_frame.pack(padx=5, pady=5)
+        # compute tile size + scroll behavior
+        tile_size, use_scroll = self.compute_tile_size()
+
+        # Set reasonable window size
+        screen_w = self.window.winfo_screenwidth()
+        screen_h = self.window.winfo_screenheight()
+        win_w = min(screen_w - 100, max(400, self.board.cols * tile_size + 100))
+        win_h = min(screen_h - 100, max(300, self.board.rows * tile_size + 150))
+        self.window.geometry(f"{win_w}x{win_h}")
+
+        # scale all images to tile_size
+        self.scaled_images = {}
+        for key, img in self.images.items():
+            base_w = img.width()
+            if base_w <= tile_size:
+                # use original (or could zoom)
+                self.scaled_images[key] = img
+            else:
+                factor = max(1, base_w // tile_size)
+                self.scaled_images[key] = img.subsample(factor)
+
+        # header
+        header = tk.Frame(self.window, bg="#dddddd")
+        header.pack(fill="x")
+
+        self.mines_label = tk.Label(header, text="Mines: 000", font=("Arial", 11, "bold"),
+                                    bg="#dddddd")
+        self.mines_label.pack(side="left", padx=10, pady=5)
+
+        title_label = tk.Label(header, text="Minesweeper", font=("Arial", 13, "bold"),
+                               bg="#dddddd")
+        title_label.pack(side="left", expand=True)
+
+        self.timer_label = tk.Label(header, text="Time: 000", font=("Arial", 11, "bold"),
+                                    bg="#dddddd")
+        self.timer_label.pack(side="right", padx=10)
+        
+        # if scrollbars needed
+        if use_scroll:
+            outer = tk.Frame(self.window)
+            outer.pack(fill="both", expand=True)
+
+            canvas = tk.Canvas(outer, bg="black")
+            canvas.pack(side="left", fill="both", expand=True)
+
+            scroll_y = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+            scroll_y.pack(side="right", fill="y")
+
+            scroll_x = tk.Scrollbar(outer, orient="horizontal", command=canvas.xview)
+            scroll_x.pack(side="bottom", fill="x")
+
+            # link scrollbars to canvas
+            canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
+
+
+            board_frame = tk.Frame(canvas)
+            canvas.create_window((0, 0), window=board_frame, anchor="nw")
+
+            def on_config(event):
+                canvas.configure(scrollregion=canvas.bbox("all"))
+            board_frame.bind("<Configure>", on_config)
+        else:
+            # normal mode — no scrollbars
+            board_frame = tk.Frame(self.window, bg="black")
+            board_frame.pack(padx=5, pady=5)
+
+        
+        # Build buttons
         self.buttons = []
         for row in range(self.board.rows):
             button_row = []
-            for col in range(self.board.cols):  # IMPORRTANT: create the clickable buttons on the minesweeper board and bind left and right click
-                btn = tk.Button(board_frame, width=btn_width, height=1, font=("Arial", font_size),
-                                command=lambda r=row, c=col: self.left_click(r, c))
-                btn.grid(row=row, column=col, padx=1, pady=1)
+            for col in range(self.board.cols):
+                btn = tk.Button(
+                    board_frame,
+                    image=self.scaled_images["hidden"],
+                    width=tile_size,
+                    height=tile_size,
+                    command=lambda r=row, c=col: self.left_click(r, c)
+                )
+                btn.grid(row=row, column=col, padx=0, pady=0)
+                # Windows & most mice
                 btn.bind("<Button-3>", lambda event, r=row, c=col: self.right_click(event, r, c))
+
+                # macOS trackpad secondary click (two-finger click)
+                btn.bind("<Button-2>", lambda event, r=row, c=col: self.right_click(event, r, c))
+
+                # macOS Control + Click (treated as right-click)
+                btn.bind("<Control-Button-1>", lambda event, r=row, c=col: self.right_click(event, r, c))
+
                 button_row.append(btn)
             self.buttons.append(button_row)
+
+        # footer
+        footer = tk.Frame(self.window, bg="white")
+        footer.pack(fill="x", pady=5)
+
+        info_text = "Left click: Reveal | Right click: Flag"
+        tk.Label(footer, text=info_text, font=("Arial", 9), bg="white").pack(pady=2)
+
+        tk.Button(footer, text="Back to Menu", width=18,
+                  command=self.show_menu).pack(pady=3)
+
         self.update_board()
-        bottom_frame = tk.Frame(self.window, bg="white")
-        bottom_frame.pack(pady=10)
-        quit_button = tk.Button(bottom_frame, text="Back to Menu", width=20, height=1, command=self.show_menu)
-        quit_button.pack()
+
+    def start_timer(self):
+        """live timer after 1st click"""
+        self.timer_running = True
+        self.start_time = time.time()
+        self._tick_timer()
+
+    def _tick_timer(self):
+        if not self.timer_running or self.board is None:
+            return
+        elapsed = int(time.time() - self.start_time)
+        if self.timer_label is not None:
+            self.timer_label.config(text=f"Time: {elapsed:03d}")
+        if not self.board.game_over:
+            self.window.after(1000, self._tick_timer)
 
     def left_click(self, row, col):
         """actions if left button is clicked"""
-        if self.game_started == False:
-            self.board.place_mines(row, col)  # place mines only after first button is clicked
-            self.game_started = True
-            self.start_time = time.time()  # start timer only after first click
-        self.board.reveal_cell(row, col)  # reveal the cell on left click
-        self.update_board()  # call update board after every left click
-        if self.board.game_over == True:
-            self.end_game()  # if Game over flag is turned true end the game
+        if self.board is None or self.board.game_over:
+            return
 
+        if not self.game_started:
+            self.board.place_mines(row, col)
+            self.game_started = True
+            if not self.timer_running:
+                self.start_timer()
+
+        # BEFORE revealing: check if the clicked cell is a mine
+        if self.board.mine_grid[row][col]:
+            self.clicked_mine = (row, col)
+
+        self.board.reveal_cell(row, col)
+        self.update_board()
+
+        # if the game is over, reveal all mines, wrong flags, then update UI again
+        if self.board.game_over:
+            self.reveal_all_mines()
+            self.mark_wrong_flags()
+            self.update_board()
+            self.end_game()
+            
     def right_click(self, event, row, col):
-        """right click for flag trigger"""
-        if self.game_started == True:  # first click always has to be a left click
-            self.board.toggle_flag(row, col)
-            self.update_board()  # call update board for every right click
+        """for counting remained flags/mines"""
+        if self.board is None or self.board.game_over or not self.game_started:
+            return
+        self.board.toggle_flag(row, col)
+        self.update_board()
 
     def update_board(self):
-        """handle outcome of every event/trigger (UI change based on every click in the game board)"""
+        if self.board is None:
+            return
+        
         for row in range(self.board.rows):
             for col in range(self.board.cols):
                 btn = self.buttons[row][col]
+
+                # revealed cell
                 if self.board.revealed[row][col]:
                     if self.board.mine_grid[row][col]:
-                        btn.config(text="*", bg="red", fg="white", state="disabled")  # mine cell to red
-                    else:
-                        num = self.board.number_grid[row][col]
-                        if num == 0:
-                            btn.config(text="", bg="lightgray", state="disabled")  # empty cell with 0 mines -> light gray
+                        # clicked mine
+                        if self.clicked_mine == (row, col) and not self.board.won:
+                            btn.config(image=self.scaled_images["mineClicked"])
                         else:
-                            btn.config(text=str(num), bg="lightgray", state="disabled")  # cell has adjacent values
+                            btn.config(image=self.scaled_images["mine"])
+                    else:
+                        if (self.board.game_over and
+                            self.board.flagged[row][col] and
+                            not self.board.mine_grid[row][col]):
+                            btn.config(image=self.scaled_images["mineFalse"])
+                        else:
+                            num = self.board.number_grid[row][col]
+                            if num == 0:
+                                btn.config(image=self.scaled_images["empty"])
+                            else:
+                                btn.config(image=self.scaled_images[f"num{num}"])
+
                 elif self.board.flagged[row][col]:
-                    btn.config(text="F", bg="yellow", fg="black", state="normal")  # if flagged row, turn it yellow
+                    # Hidden but flagged
+                    btn.config(image=self.scaled_images["flag"])
+
                 else:
-                    btn.config(text="", bg="gray", fg="black", state="normal")  # otherwise default
+                    # Hidden and not flagged
+                    btn.config(image=self.scaled_images["hidden"])
+
+        # Update mine counter
+        flags = sum(row.count(True) for row in self.board.flagged)
+        remaining = self.board.mines - flags
+        if self.mines_label is not None:
+            self.mines_label.config(text=f"Mines: {remaining:03d}")
+
+    def reveal_all_mines(self):
+        for r in range(self.board.rows):
+            for c in range(self.board.cols):
+                if self.board.mine_grid[r][c]:
+                    self.board.revealed[r][c] = True
+
+    def mark_wrong_flags(self):
+        for r in range(self.board.rows):
+            for c in range(self.board.cols):
+                if self.board.flagged[r][c] and not self.board.mine_grid[r][c]:
+                    # mark incorrect flags as revealed so update_board() draws mineFalse.png
+                    self.board.revealed[r][c] = True
 
     def end_game(self):
         """outcome of a win or lose and display appropriate values"""
+        self.timer_running = False
+        self.window.update_idletasks()
         if self.board.won == True:
-            elapsed = time.time() - self.start_time  # if won, calculate elapsed
+            elapsed = time.time() - self.start_time if self.start_time else 0
             name = simpledialog.askstring("You Won!", "Enter your name:")
-            if name == None:
-                name = "John Doe"  # default if no name entered
+            if not name:
+                name = "Player"
             save_score(name, elapsed, self.difficulty)
-            messagebox.showinfo("You Won!", "Congratulations!\nTime: " + str(int(elapsed)) + " seconds")  # Congratulations
+            messagebox.showinfo("You Won!",
+                                f"Congratulations!\nTime: {int(elapsed)} seconds")
         else:
-            messagebox.showinfo("Game Over", "You hit a mine!\nGame Over!")  # lost, hit a mine
-        self.show_menu()
+            messagebox.showinfo("Game Over", "You hit a mine!\nGame Over!")
 
     def show_scores(self):
         """display scores"""
         self.clear_screen()
-        self.window.geometry("500x400")
+        self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
-        title = tk.Label(frame, text="Highscores", font=("Arial", 16, "bold"), bg="white")
-        title.pack(pady=10)
+        frame.pack(expand=True, padx=20, pady=20)
+
+        tk.Label(frame, text="Highscores", font=("Arial", 16, "bold"),
+                 bg="white").pack(pady=10)
+
         scores = load_scores()
         if len(scores) == 0:
             text = "No scores yet!"
@@ -368,16 +567,16 @@ class Game:
             text = ""
             for i in range(len(scores)):
                 text = text + scores[i]
-        score_label = tk.Label(frame, text=text, font=("Arial", 10), bg="white", justify="left")
-        score_label.pack(pady=10)
-        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
-        back_button.pack(pady=10)
+        tk.Label(frame, text=text, font=("Arial", 10), bg="white",
+                 justify="left").pack(pady=10)
+        tk.Button(frame, text="Back", width=20, height=2,
+                  command=self.show_menu).pack(pady=10)
 
     def show_stats(self):
         """show stats (to be enhanced)"""
         self.clear_screen()
-        '''Depricated
-        self.window.geometry("400x400")
+        self.window.geometry("500x400")
+        '''Depricated       
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
         title = tk.Label(frame, text="Statistics", font=("Arial", 16, "bold"), bg="white")
@@ -402,7 +601,6 @@ class Game:
         back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
         back_button.pack(pady=10)'''
 
-        self.window.geometry("800x800")
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
 
