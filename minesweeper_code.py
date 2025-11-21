@@ -2,10 +2,8 @@ import random
 import time
 from datetime import datetime
 import csv
-#import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
-#from scipy.ndimage import label
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import simpledialog
