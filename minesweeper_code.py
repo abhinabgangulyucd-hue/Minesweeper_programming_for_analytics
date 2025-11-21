@@ -169,7 +169,9 @@ def load_scores():
     try:
         with open(SCORE_FILE, "r") as file:
             lines = file.readlines()
-            file.write(lines)
+            print lines
+            #file.write(lines)
+            return lines
     except:
         return []
 
@@ -528,12 +530,12 @@ class Game:
         self.window.update_idletasks()
         if self.board.won == True:
             elapsed = time.time() - self.start_time if self.start_time else 0
+            messagebox.showinfo("You Won!",
+                                f"Congratulations!\nTime: {int(elapsed)} seconds")
             name = simpledialog.askstring("You Won!", "Enter your name:")
             if not name:
                 name = "Player"
-            save_score(name, elapsed, self.difficulty)
-            messagebox.showinfo("You Won!",
-                                f"Congratulations!\nTime: {int(elapsed)} seconds")
+            save_score(name, elapsed, self.difficulty)            
         else:
             messagebox.showinfo("Game Over", "You hit a mine!\nGame Over!")
 
