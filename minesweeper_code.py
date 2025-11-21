@@ -21,7 +21,6 @@ BOARD_FILE_CSV = "grid_matrix.csv" #board answer
 MAX_TILE_SIZE = 32        # normal size
 MIN_TILE_SIZE = 14        # smallest readable tile size
 
-
 class Board:
     """The game board mainly of 3 elements of the mines, mine count, flags and the reveal count"""
     def __init__(self, rows, cols, mines):
@@ -82,20 +81,11 @@ class Board:
         self.reveal_board()
 
     def reveal_board(self):        
-        """Depricated
-        with open(BOARD_FILE, "a") as file: #use "a" type because of the analytics part
-            file.write("Output:\n")
-            for row in range(self.rows):
-                row_cells = []
-                for col in range(self.cols):                    
-                    row_cells.append(str(self.number_grid[row][col]))                                    
-                file.write(" ".join(row_cells) + '\n') #export board answer to txt file"""
         with open(BOARD_FILE_CSV, "a", newline="") as file_csv: #use "a" type because of the analytics part
             writer = csv.writer(file_csv)
             writer.writerow(["Output:"])  #Optional header row
             for row in range(self.rows):
-                writer.writerow([self.number_grid[row][col] for col in range(self.cols)])                      
-
+                writer.writerow([self.number_grid[row][col] for col in range(self.cols)])
                 
 
     #keeping below reveal_cell function commented if problems are identified with the flooding logic
@@ -170,18 +160,16 @@ def make_empty_grid(total_rows, total_cols, default_value):
 
 def save_score(name, time_taken, difficulty):
     """writes name of user, time taken and difficulty in file"""
-    file = open(SCORE_FILE, "a")
-    line = name + " | " + str(time_taken) + " | " + difficulty + "\n"
-    file.write(line)
-    file.close()
+    with open(SCORE_FILE, "a") as file:
+        line = name + " | " + str(time_taken) + " | " + difficulty + "\n"
+        file.write(line)
 
 def load_scores():
     """to load scores"""
     try:
-        file = open(SCORE_FILE, "r")
-        lines = file.readlines()
-        file.close()
-        return lines
+        with open(SCORE_FILE, "r") as file:
+            lines = file.readlines()
+            file.write(lines)
     except:
         return []
 
@@ -248,13 +236,13 @@ class Game:
         self.clear_screen()
         self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(expand=True)
+        frame.pack(padx=20, pady=20)
         
         tk.Label(frame, text="MINESWEEPER", font=("Arial", 20, "bold"), bg="white").pack(pady=20)
         tk.Button(frame, text="Play Game", width=20, height=2,
                   command=self.show_difficulty).pack(pady=10)
         tk.Button(frame, text="View Scores", width=20, height=2,
-                  command=self.show_scores).pack(pady=10)
+                  command=self.show_scores_menu).pack(pady=10)
         tk.Button(frame, text="View Statistics", width=20, height=2,
                   command=self.show_stats).pack(pady=10)
         tk.Button(frame, text="Exit", width=20, height=2,
@@ -311,51 +299,53 @@ class Game:
         screen_w = self.window.winfo_screenwidth()
         screen_h = self.window.winfo_screenheight()
 
-        # Limit the usable area (header + footer)
-        usable_h = screen_h - 200
+        # subtract UI space
+        header_footer_space = 180     # header + title + footer
+        side_padding = 30             # side borders
 
-        # Tile sizes that would fit the whole board on screen
-        fit_tile_w = screen_w // cols
-        fit_tile_h = usable_h // rows
+        usable_w = screen_w - side_padding
+        usable_h = screen_h - header_footer_space
 
-        tile_size = min(fit_tile_w, fit_tile_h, MAX_TILE_SIZE)
+        # Tile sizes that would fit the board on screen
+        max_tile_w = usable_w // cols
+        max_tile_h = usable_h // rows
 
-        # Determine if board actually fits on screen
-        fits_by_width = (cols * tile_size) <= screen_w
-        fits_by_height = (rows * tile_size) <= usable_h
+        tile_size = min(max_tile_w, max_tile_h)
 
-        fits_screen = fits_by_width and fits_by_height
+        # Enforce tile size limits
+        tile_size = max(MIN_TILE_SIZE, min(tile_size, MAX_TILE_SIZE))
 
-        # If too big → scroll mode with minimum tile size
-        if not fits_screen:
-            return MIN_TILE_SIZE, True
+        return tile_size
 
-        return max(tile_size, MIN_TILE_SIZE), False
+    def scale_image(self, image, target_size):
+        original = image.width()
 
+        if original == target_size:
+            return image
+
+        if original > target_size:
+            factor = max(1, round(original / target_size))
+            return image.subsample(factor)
+
+        factor = max(1, round(target_size / original))
+        return image.zoom(factor)
 
     def draw_board(self):
         """#to create the visual elements of the Board"""
-        self.clear_screen()# Hi! your clear screen friend again to save the day
-        # compute tile size + scroll behavior
-        tile_size, use_scroll = self.compute_tile_size()
+        self.clear_screen()
+        tile_size = self.compute_tile_size()
 
         # Set reasonable window size
         screen_w = self.window.winfo_screenwidth()
         screen_h = self.window.winfo_screenheight()
-        win_w = min(screen_w - 100, max(400, self.board.cols * tile_size + 100))
-        win_h = min(screen_h - 100, max(300, self.board.rows * tile_size + 150))
+        win_w = self.board.cols * tile_size + 20
+        win_h = self.board.rows * tile_size + 160
         self.window.geometry(f"{win_w}x{win_h}")
 
-        # scale all images to tile_size
+        # Scale 
         self.scaled_images = {}
         for key, img in self.images.items():
-            base_w = img.width()
-            if base_w <= tile_size:
-                # use original (or could zoom)
-                self.scaled_images[key] = img
-            else:
-                factor = max(1, base_w // tile_size)
-                self.scaled_images[key] = img.subsample(factor)
+            self.scaled_images[key] = self.scale_image(img, tile_size)
 
         # header
         header = tk.Frame(self.window, bg="#dddddd")
@@ -365,6 +355,10 @@ class Game:
                                     bg="#dddddd")
         self.mines_label.pack(side="left", padx=10, pady=5)
 
+        esc_hint = tk.Label(header, text="(ESC: Menu)", font=("Arial", 11),
+                           bg="#dddddd", fg="#666666")
+        esc_hint.pack(side="left", padx=10, pady=5)
+
         title_label = tk.Label(header, text="Minesweeper", font=("Arial", 13, "bold"),
                                bg="#dddddd")
         title_label.pack(side="left", expand=True)
@@ -372,36 +366,10 @@ class Game:
         self.timer_label = tk.Label(header, text="Time: 000", font=("Arial", 11, "bold"),
                                     bg="#dddddd")
         self.timer_label.pack(side="right", padx=10)
-        
-        # if scrollbars needed
-        if use_scroll:
-            outer = tk.Frame(self.window)
-            outer.pack(fill="both", expand=True)
 
-            canvas = tk.Canvas(outer, bg="black")
-            canvas.pack(side="left", fill="both", expand=True)
-
-            scroll_y = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
-            scroll_y.pack(side="right", fill="y")
-
-            scroll_x = tk.Scrollbar(outer, orient="horizontal", command=canvas.xview)
-            scroll_x.pack(side="bottom", fill="x")
-
-            # link scrollbars to canvas
-            canvas.configure(yscrollcommand=scroll_y.set, xscrollcommand=scroll_x.set)
-
-
-            board_frame = tk.Frame(canvas)
-            canvas.create_window((0, 0), window=board_frame, anchor="nw")
-
-            def on_config(event):
-                canvas.configure(scrollregion=canvas.bbox("all"))
-            board_frame.bind("<Configure>", on_config)
-        else:
-            # normal mode — no scrollbars
-            board_frame = tk.Frame(self.window, bg="black")
-            board_frame.pack(padx=5, pady=5)
-
+        # Board frame
+        board_frame = tk.Frame(self.window, bg="white")
+        board_frame.pack(pady=5)
         
         # Build buttons
         self.buttons = []
@@ -413,9 +381,14 @@ class Game:
                     image=self.scaled_images["hidden"],
                     width=tile_size,
                     height=tile_size,
-                    command=lambda r=row, c=col: self.left_click(r, c)
+                    borderwidth=0,
+                    padx=0, pady=0
                 )
                 btn.grid(row=row, column=col, padx=0, pady=0)
+
+                # LEFT CLICK (reveal)
+                btn.bind("<Button-1>", lambda event, r=row, c=col: self.left_click(r, c))
+
                 # Windows & most mice
                 btn.bind("<Button-3>", lambda event, r=row, c=col: self.right_click(event, r, c))
 
@@ -440,12 +413,15 @@ class Game:
 
         self.update_board()
 
+        # keyboard shortcut to go back to menu
+        self.window.bind("<Escape>", lambda e: self.show_menu())
+
     def start_timer(self):
         """live timer after 1st click"""
         self.timer_running = True
         self.start_time = time.time()
         self._tick_timer()
-
+    
     def _tick_timer(self):
         if not self.timer_running or self.board is None:
             return
@@ -479,15 +455,16 @@ class Game:
             self.mark_wrong_flags()
             self.update_board()
             self.end_game()
-            
+
     def right_click(self, event, row, col):
         """for counting remained flags/mines"""
         if self.board is None or self.board.game_over or not self.game_started:
             return
         self.board.toggle_flag(row, col)
         self.update_board()
-
+    
     def update_board(self):
+        """handle outcome of every event/trigger (UI change based on every click in the game board)"""
         if self.board is None:
             return
         
@@ -557,32 +534,105 @@ class Game:
         else:
             messagebox.showinfo("Game Over", "You hit a mine!\nGame Over!")
 
-    def show_scores(self):
-        """display scores"""
+    def show_scores_menu(self):
+        """Score difficulty selection screen"""
         self.clear_screen()
         self.window.geometry("400x400")
+
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(expand=True, padx=20, pady=20)
+        frame.pack(padx=20, pady=20)
 
-        tk.Label(frame, text="Highscores", font=("Arial", 16, "bold"),
-                 bg="white").pack(pady=10)
+        # Title
+        title1 = tk.Label(frame, text="Select Difficulty", font=("Arial", 21, "bold"), bg="white")
+        title1.pack(pady=4)
 
-        scores = load_scores()
-        if len(scores) == 0:
-            text = "No scores yet!"
+        # Difficulty buttons
+        easy_button = tk.Button(
+            frame, text="Easy (9x9, 10 mines)", width=20, height=2,
+            command=lambda: self.show_scores_table("Easy")
+        )
+        easy_button.pack(pady=10)
+
+        inter_button = tk.Button(
+            frame, text="Intermediate (16x16, 40 mines)", width=20, height=2,
+            command=lambda: self.show_scores_table("Intermediate")
+        )
+        inter_button.pack(pady=10)
+
+        expert_button = tk.Button(
+            frame, text="Expert (16x30, 99 mines)", width=20, height=2,
+            command=lambda: self.show_scores_table("Expert")
+        )
+        expert_button.pack(pady=10)
+
+        # Back button
+        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
+        back_button.pack(pady=10)
+    
+    def show_scores_table(self, difficulty_name):
+        self.clear_screen()
+        self.window.geometry("400x400")
+
+        outer = tk.Frame(self.window, bg="#e8e8e8")
+        outer.pack(fill="both", expand=True)
+
+        card = tk.Frame(outer, bg="white", padx=20, pady=20,
+                        relief="ridge", borderwidth=2)
+        card.place(relx=0.5, rely=0.5, anchor="center")
+
+        tk.Label(card, text=f"{difficulty_name} – Top 10",
+                 font=("Arial", 16, "bold"), bg="white").grid(
+                 row=0, column=0, columnspan=3, pady=(0, 10))
+
+        # table header
+        headers = ["Rank", "Player", "Time (s)"]
+        for col, h in enumerate(headers):
+            tk.Label(card, text=h, font=("Arial", 11, "bold"),
+                     bg="white").grid(row=1, column=col, padx=8, pady=4, sticky="w")
+
+        all_scores = load_scores()
+
+        # filter by difficulty
+        filtered = []
+        for line in all_scores:
+            parts = [x.strip() for x in line.split("|")]
+            if len(parts) != 3:
+                continue
+            name, time_str, diff = parts
+            if diff == difficulty_name:
+                try:
+                    filtered.append((name, float(time_str)))
+                except:
+                    pass
+
+        # sort by time asc + take top 10
+        filtered.sort(key=lambda x: x[1])
+        top10 = filtered[:10]
+
+        if not top10:
+            tk.Label(card, text="No scores yet for this difficulty.",
+                     font=("Arial", 11), bg="white").grid(
+                     row=2, column=0, columnspan=3, pady=12)
+            table_bottom = 3
         else:
-            text = ""
-            for i in range(len(scores)):
-                text = text + scores[i]
-        tk.Label(frame, text=text, font=("Arial", 10), bg="white",
-                 justify="left").pack(pady=10)
-        tk.Button(frame, text="Back", width=20, height=2,
-                  command=self.show_menu).pack(pady=10)
+            for i, (name, t) in enumerate(top10, start=1):
+                row = i + 1
+                tk.Label(card, text=str(i), font=("Arial", 11),
+                         bg="white").grid(row=row, column=0, sticky="w", padx=8)
+                tk.Label(card, text=name, font=("Arial", 11),
+                         bg="white").grid(row=row, column=1, sticky="w", padx=8)
+                tk.Label(card, text=f"{t:.3f}", font=("Arial", 11),
+                         bg="white").grid(row=row, column=2, sticky="w", padx=8)
+            table_bottom = len(top10) + 2
+
+        # back button
+        tk.Button(card, text="Back", width=12,
+                  command=self.show_scores_menu).grid(
+                  row=table_bottom, column=0, columnspan=3, pady=(15, 0))
 
     def show_stats(self):
         """show stats (to be enhanced)"""
-        self.clear_screen()
-        self.window.geometry("500x400")
+        self.clear_screen()       
         '''Depricated       
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
@@ -608,6 +658,7 @@ class Game:
         back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
         back_button.pack(pady=10)'''
 
+        self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
 
@@ -703,7 +754,6 @@ class Game:
                            f"{self.n_board_analysis_mines}mines.pdf"
         self.generate_analytics(BOARD_FILE_CSV, output_pdf=pdf_filename, show_plots=True, radius=1)
         
-
     def load_boards_from_csv(self, csvboardfile):
         #Ayaan (Nov 20th fix:) Simplified logic for reading the boards from csv given structure is fixed
         boards = []
@@ -744,7 +794,7 @@ class Game:
 
     def get_number_distribution(self, boards):
         """Distribution of numbers 0 to 8 across all boards"""
-        distribution = {i: 0 for i in range(9)}#creating a dictionary
+        distribution = {i: 0 for i in range(9)} #creating a dictionary
         print(distribution)
         for board in boards:
             for row in board:
@@ -944,12 +994,12 @@ class Game:
         print(f"Board size: {rows} x {cols}")
         print("\nEmpty cells (0 mines around):")
         print(f"  Average: {white_mean:.1f} per board")
-        print(f"  Middle: {white_median} per board") 
+        print(f"  Middle: {white_median} per board") #middle or median?
         print(f"  Variation: {white_std:.1f}")
         print("\nMine clusters:")
         print(f"  Average: {cluster_mean:.1f} per board")
         print(f"  Middle: {cluster_median} per board")
-        print(f"  Variation: {cluster_std:.1f}")
+        print(f"  Variation: {cluster_std:.1f}\n")
 
         return {
             "num_boards": len(boards),
@@ -977,6 +1027,7 @@ def validate_custom_config(rows, cols, mines):
     return None
 
 #Abhinab Update(15th November 2025): added comments to customconfigdialog
+#Audrey Update(20th Nov 2025): fix shortcuts
 class CustomConfigDialog(tk.Toplevel):
     """
     Dialog for custom Minesweeper board configuration.
@@ -993,10 +1044,9 @@ class CustomConfigDialog(tk.Toplevel):
         frame.pack()
         self.game = game #to accept class game arguments
 
-
         warning_text = (
-            "Max: 9800 cells."
-            "Warning: Selecting over 3600 cells may cause display or performance issues."
+            "Max: 9800 cells.\n"
+            "Warning: Selecting over 30 rows and 70 columns may cause display or performance issues."
         )
         tk.Label(
             frame, text=warning_text, font=("Arial", 9), fg="red"
@@ -1019,13 +1069,16 @@ class CustomConfigDialog(tk.Toplevel):
         tk.Button(btns, text="Start", width=8, command=self.on_ok).pack(side="left", padx=5)
         tk.Button(btns, text="Cancel", width=8, command=self.on_cancel).pack(side="left", padx=5)
 
-        # Keyboard shortcuts for Enter/Esc
-        self.bind("<Return>", lambda e: self.on_ok())
-        self.bind("<Escape>", lambda e: self.on_cancel())
+        # Start and Cancel buttons
+        btns = tk.Frame(frame)
+        btns.grid(row=4, column=0, columnspan=2, pady=15)
+        tk.Button(btns, text="Start", width=8, command=self.on_ok).pack(side="left", padx=5)
+        tk.Button(btns, text="Cancel", width=8, command=self.on_cancel).pack(side="left", padx=5)
 
         x = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
+    
     ##Abhinab Update (15th November 2025): Fixed logic of checking decimal values
     def on_ok(self):
         rows_str = self.rows_var.get() #to retrieve rows val
