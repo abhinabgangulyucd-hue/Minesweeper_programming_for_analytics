@@ -236,7 +236,7 @@ class Game:
         self.clear_screen()
         self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
+        frame.pack(fill ="both", expand = True)
         
         tk.Label(frame, text="MINESWEEPER", font=("Arial", 20, "bold"), bg="white").pack(pady=20)
         tk.Button(frame, text="Play Game", width=20, height=2,
@@ -251,22 +251,25 @@ class Game:
     def show_difficulty(self):
         """#allows user to select difficulty"""
         self.clear_screen()
-        self.window.geometry("400x400")
+        self.window.geometry("500x450")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(expand=True)
-        tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"),
-                 bg="white").pack(pady=20)
+        frame.pack(fill = "both", expand=True)
+        title1 = tk.Label(frame, text="PLAY GAME", font=("Arial", 21, "bold"), bg="white")
+        title1.pack(pady=4)
+        title2 = tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"),
+                 bg="white")
+        title2.pack(pady=20)
 
         tk.Button(frame, text="Easy (9x9, 10 mines)", width=25, height=2,
-                  command=lambda: self.start_game(EASY, "Easy")).pack(pady=5)
+                  command=lambda: self.start_game(EASY, "Easy")).pack(pady=10)
         tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=25, height=2,
-                  command=lambda: self.start_game(INTERMEDIATE, "Intermediate")).pack(pady=5)
+                  command=lambda: self.start_game(INTERMEDIATE, "Intermediate")).pack(pady=10)
         tk.Button(frame, text="Expert (16x30, 99 mines)", width=25, height=2,
-                  command=lambda: self.start_game(EXPERT, "Expert")).pack(pady=5)
+                  command=lambda: self.start_game(EXPERT, "Expert")).pack(pady=10)
         tk.Button(frame, text="Custom", width=25, height=2,
-                  command=self.show_custom).pack(pady=5)
+                  command=self.show_custom).pack(pady=10)
         tk.Button(frame, text="Back", width=25, height=2,
-                  command=self.show_menu).pack(pady=5)
+                  command=self.show_menu).pack(pady=10)
 
     def show_custom(self):
         """#function for handling custom board scenarios"""
@@ -426,7 +429,7 @@ class Game:
         if not self.timer_running or self.board is None:
             return
         elapsed = int(time.time() - self.start_time)
-        if self.timer_label is not None:
+        if self.timer_label and self.timer_label.winfo_exists():
             self.timer_label.config(text=f"Time: {elapsed:03d}")
         if not self.board.game_over:
             self.window.after(1000, self._tick_timer)
@@ -540,33 +543,35 @@ class Game:
         self.window.geometry("400x400")
 
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
+        frame.pack(fill = "both", expand=True)
 
         # Title
-        title1 = tk.Label(frame, text="Select Difficulty", font=("Arial", 21, "bold"), bg="white")
+        title1 = tk.Label(frame, text="HIGH SCORES", font=("Arial", 21, "bold"), bg="white")
         title1.pack(pady=4)
+        title2 = tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"), bg="white")
+        title2.pack(pady=4)
 
         # Difficulty buttons
         easy_button = tk.Button(
-            frame, text="Easy (9x9, 10 mines)", width=20, height=2,
+            frame, text="Easy (9x9, 10 mines)", width=25, height=2,
             command=lambda: self.show_scores_table("Easy")
         )
         easy_button.pack(pady=10)
 
         inter_button = tk.Button(
-            frame, text="Intermediate (16x16, 40 mines)", width=20, height=2,
+            frame, text="Intermediate (16x16, 40 mines)", width=25, height=2,
             command=lambda: self.show_scores_table("Intermediate")
         )
         inter_button.pack(pady=10)
 
         expert_button = tk.Button(
-            frame, text="Expert (16x30, 99 mines)", width=20, height=2,
+            frame, text="Expert (16x30, 99 mines)", width=25, height=2,
             command=lambda: self.show_scores_table("Expert")
         )
         expert_button.pack(pady=10)
 
         # Back button
-        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
+        back_button = tk.Button(frame, text="Back", width=25, height=2, command=self.show_menu)
         back_button.pack(pady=10)
     
     def show_scores_table(self, difficulty_name):
@@ -658,32 +663,32 @@ class Game:
         back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
         back_button.pack(pady=10)'''
 
-        self.window.geometry("400x400")
+        self.window.geometry("500x450")
         frame = tk.Frame(self.window, bg="white")
-        frame.pack(padx=20, pady=20)
+        frame.pack(fill = "both", expand=True)
 
         title1 = tk.Label(frame, text="ANALYTICS", font=("Arial", 21, "bold"), bg="white")
         title1.pack(pady=4)
         title2 = tk.Label(frame, text="Select Difficulty", font=("Arial", 16, "bold"), bg="white")
         title2.pack(pady=3)
 
-        easy_button = tk.Button(frame, text="Easy (9x9, 10 mines)", width=20, height=2,
+        easy_button = tk.Button(frame, text="Easy (9x9, 10 mines)", width=25, height=2,
                                command=lambda: self.default_analysis(EASY, "Easy"))
         easy_button.pack(pady=10)
 
-        inter_button = tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=20, height=2,
+        inter_button = tk.Button(frame, text="Intermediate (16x16, 40 mines)", width=25, height=2,
                                 command=lambda: self.default_analysis(INTERMEDIATE, "Intermediate"))
         inter_button.pack(pady=10)
 
-        expert_button = tk.Button(frame, text="Expert (16x30, 99 mines)", width=20, height=2,
+        expert_button = tk.Button(frame, text="Expert (16x30, 99 mines)", width=25, height=2,
                                  command=lambda: self.default_analysis(EXPERT, "Expert"))
         expert_button.pack(pady=10)
 
         # Custom board button
-        custom_button = tk.Button(frame, text="Custom", width=20, height=2, command=self.custom_board_analysis)
+        custom_button = tk.Button(frame, text="Custom", width=25, height=2, command=self.custom_board_analysis)
         custom_button.pack(pady=10)
 
-        back_button = tk.Button(frame, text="Back", width=20, height=2, command=self.show_menu)
+        back_button = tk.Button(frame, text="Back", width=25, height=2, command=self.show_menu)
         back_button.pack(pady=10)
         
     def default_analysis(self, difficulty, name):
