@@ -104,9 +104,7 @@ class Board:
     def reveal_cell(self, row, col):
         """reveals content of the cell if appropriate"""
         # Do nothing if already revealed or flagged
-        if self.revealed[row][col]:
-            return
-        if self.flagged[row][col]:
+        if self.revealed[row][col] or self.flagged[row][col]:
             return
         # If this is a mine, reveal it and end the game
         if self.mine_grid[row][col]:
@@ -137,7 +135,7 @@ class Board:
 
     def toggle_flag(self, row, col):
         """cannot toggle a cell to be flagged if already revealed"""
-        if self.revealed[row][col]:
+        if self.revealed[row][col] or self.game_over:
             return
         self.flagged[row][col] = not self.flagged[row][col]  # Reverse a flag toggle
 
@@ -200,6 +198,7 @@ class Game:
     def __init__(self, window):
         self.window = window
         self.window.title("Minesweeper")
+        # Game state
         self.board = None
         self.buttons = []
         self.clicked_mine = None
@@ -211,6 +210,7 @@ class Game:
         # UI references
         self.timer_label = None
         self.mines_label = None
+        self.scaled_images = {}
 
         # Load base images once
         self.images = {
@@ -234,7 +234,7 @@ class Game:
     def show_menu(self):
         """#shows all the possible menus (can think of it like an anchor that has all the operations in place)"""
         self.clear_screen()
-        self.window.geometry("600x600")
+        self.window.geometry("400x400")
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
         
@@ -247,7 +247,6 @@ class Game:
                   command=self.show_stats).pack(pady=10)
         tk.Button(frame, text="Exit", width=20, height=2,
                   command=self.window.quit).pack(pady=10)
-
 
     def show_difficulty(self):
         """#allows user to select difficulty"""
@@ -633,9 +632,8 @@ class Game:
 
     def show_stats(self):
         """show stats (to be enhanced)"""
-        self.clear_screen()
-        '''Depricated
-        self.window.geometry("400x400")
+        self.clear_screen()       
+        '''Depricated       
         frame = tk.Frame(self.window, bg="white")
         frame.pack(padx=20, pady=20)
         title = tk.Label(frame, text="Statistics", font=("Arial", 16, "bold"), bg="white")
