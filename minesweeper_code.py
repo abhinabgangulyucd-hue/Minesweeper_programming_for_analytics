@@ -172,7 +172,7 @@ def load_scores():
             return lines
     except:
         return []
-
+'''
 def calculate_statistics(board):
     """sample to calculate stats"""
     white_count = 0
@@ -183,15 +183,7 @@ def calculate_statistics(board):
     total_cells = board.rows * board.cols
     percentage = (white_count * 100) / total_cells
     return white_count, total_cells, percentage
-
-def get_button_size(num_cols):
-    """identify button size of various buttons"""
-    if num_cols <= 9:
-        return 3, 8
-    elif num_cols <= 16:
-        return 2, 6
-    else:
-        return 1, 4
+'''
 
 # --- Main Game UI Class ---
 class Game:
@@ -441,7 +433,7 @@ class Game:
 
         if not self.game_started:
             self.board.place_mines(row, col)
-            self.game_started = True
+            self.game_started = True #ensures safe click
             if not self.timer_running:
                 self.start_timer()
 
@@ -691,8 +683,8 @@ class Game:
         back_button = tk.Button(frame, text="Back", width=25, height=2, command=self.show_menu)
         back_button.pack(pady=10)
         
-    def default_analysis(self, difficulty, name):
-        self.n_board_analysis_iter = simpledialog.askinteger(f"N-board analysis: {name}", "Enter the number of generated boards")
+    def default_analysis(self, difficulty, num):
+        self.n_board_analysis_iter = simpledialog.askinteger(f"N-board analysis: {num}", "Enter the number of generated boards")
         if self.n_board_analysis_iter is None:
             return
         else:            
@@ -742,7 +734,7 @@ class Game:
         with open(BOARD_FILE_CSV, "w") as file_csv:
             for n in range(self.n_board_analysis_iter): #export n_board_analysis_iter number of boards
                 n_board = Board(self.n_board_analysis_rows, self.n_board_analysis_columns, self.n_board_analysis_mines)
-                placed = 0                                
+                placed = 0                               
                 while placed < self.n_board_analysis_mines:
                     r = random.randint(0, self.n_board_analysis_rows - 1)
                     c = random.randint(0, self.n_board_analysis_columns - 1)
@@ -785,7 +777,7 @@ class Game:
             
             if current_board:
                 boards.append(current_board)
-            
+        print(boards)
         return boards
     
     def count_white_cells(self, board):
@@ -892,8 +884,15 @@ class Game:
 
         # Chart 1-White cells per board
         ax = axes[0, 0]
+        
         if white_counts:
-            ax.hist(white_counts, bins=8, edgecolor="black", alpha=0.7)
+            n, bins, patches = ax.hist(white_counts, bins=8, edgecolor="black", alpha=0.7)
+        
+            # Add counts on top of each bar
+            for patch, count in zip(patches, n):
+                ax.text(patch.get_x() + patch.get_width()/2, patch.get_height(),
+                        str(int(count)), ha='center', va='bottom')
+        
         ax.set_title("Empty Cells Per Board", fontsize=13)
         ax.set_xlabel("Number of Empty Cells")
         ax.set_ylabel("Number of Boards")
@@ -916,8 +915,15 @@ class Game:
        
         # Chart 3-Mine clusters histogram
         ax = axes[1, 0]
+        
         if cluster_counts:
-            ax.hist(cluster_counts, bins=8, edgecolor="black", alpha=0.7)
+            n, bins, patches = ax.hist(cluster_counts, bins=8, edgecolor="black", alpha=0.7)
+        
+            # Add counts on top of each bar
+            for patch, count in zip(patches, n):
+                ax.text(patch.get_x() + patch.get_width()/2, patch.get_height(),
+                        str(int(count)), ha='center', va='bottom')
+        
         ax.set_title("Mine Clusters Per Board")
         ax.set_xlabel("Number of Mine Clusters")
         ax.set_ylabel("Number of Boards")
@@ -999,11 +1005,11 @@ class Game:
         print(f"Board size: {rows} x {cols}")
         print("\nEmpty cells (0 mines around):")
         print(f"  Average: {white_mean:.1f} per board")
-        print(f"  Middle: {white_median} per board") #middle or median?
+        print(f"  Median: {white_median} per board") #middle or median?
         print(f"  Variation: {white_std:.1f}")
         print("\nMine clusters:")
         print(f"  Average: {cluster_mean:.1f} per board")
-        print(f"  Middle: {cluster_median} per board")
+        print(f"  Median: {cluster_median} per board")
         print(f"  Variation: {cluster_std:.1f}\n")
 
         return {
@@ -1021,14 +1027,19 @@ def validate_custom_config(rows, cols, mines):
     """Validate custom board configuration (with hard cap and warning)."""
     if (rows < 1) or (cols < 1) or (mines < 1):
         return "Rows, columns, and mines must be at least 1."
-    if (rows > 98) and (cols > 100):
+    if ((rows > 98) and (cols > 100)):
         return "Rows and columns must be at most 98 x 100."
+    elif ((rows > 100) and (cols > 98)):
+        return "Rows and columns must be at most 100 x 98."
     total = rows * cols
     if total < 3:
         return "Board must have at least 3 cells."
     
     if mines > total - 2:
         return f"Too many mines! Maximum: {total - 2} (need at least 2 safe cells)."
+    
+    if total>9800:
+        return "Too many rows and columns"
     return None
 
 #Abhinab Update(15th November 2025): added comments to customconfigdialog
@@ -1073,13 +1084,6 @@ class CustomConfigDialog(tk.Toplevel):
         btns.grid(row=4, column=0, columnspan=2, pady=15)
         tk.Button(btns, text="Start", width=8, command=self.on_ok).pack(side="left", padx=5)
         tk.Button(btns, text="Cancel", width=8, command=self.on_cancel).pack(side="left", padx=5)
-
-        # Start and Cancel buttons
-        btns = tk.Frame(frame)
-        btns.grid(row=4, column=0, columnspan=2, pady=15)
-        tk.Button(btns, text="Start", width=8, command=self.on_ok).pack(side="left", padx=5)
-        tk.Button(btns, text="Cancel", width=8, command=self.on_cancel).pack(side="left", padx=5)
-
         x = parent.winfo_rootx() + (parent.winfo_width() - self.winfo_width()) // 2
         y = parent.winfo_rooty() + (parent.winfo_height() - self.winfo_height()) // 2
         self.geometry(f"+{x}+{y}")
